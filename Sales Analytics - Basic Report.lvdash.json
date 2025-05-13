@@ -1037,6 +1037,113 @@
     } ],
     "pageType" : "PAGE_TYPE_UNSPECIFIED"
   }, {
+    "name" : "d1d858dc",
+    "displayName" : "UC Metric",
+    "layout" : [ {
+      "widget" : {
+        "name" : "1f96b8ed",
+        "queries" : [ {
+          "name" : "main_query",
+          "query" : {
+            "datasetName" : "8a4f5cd4",
+            "fields" : [ {
+              "name" : "region",
+              "expression" : "`region`"
+            }, {
+              "name" : "measure(Total Orders)",
+              "expression" : "MEASURE(`Total Orders`)"
+            } ],
+            "disaggregated" : false
+          }
+        } ],
+        "spec" : {
+          "version" : 3,
+          "widgetType" : "bar",
+          "encodings" : {
+            "x" : {
+              "fieldName" : "region",
+              "scale" : {
+                "type" : "categorical",
+                "sort" : {
+                  "by" : "y-reversed"
+                }
+              },
+              "displayName" : "region"
+            },
+            "y" : {
+              "fieldName" : "measure(Total Orders)",
+              "scale" : {
+                "type" : "quantitative"
+              },
+              "displayName" : "Total Orders"
+            }
+          },
+          "frame" : {
+            "title" : "Total Orders by Region",
+            "showTitle" : true
+          }
+        }
+      },
+      "position" : {
+        "x" : 1,
+        "y" : 1,
+        "width" : 3,
+        "height" : 6
+      }
+    }, {
+      "widget" : {
+        "name" : "2cc2a5fc",
+        "queries" : [ {
+          "name" : "main_query",
+          "query" : {
+            "datasetName" : "8a4f5cd4",
+            "fields" : [ {
+              "name" : "Style",
+              "expression" : "`Style`"
+            }, {
+              "name" : "measure(Sales by product styles)",
+              "expression" : "MEASURE(`Sales by product styles`)"
+            } ],
+            "disaggregated" : false
+          }
+        } ],
+        "spec" : {
+          "version" : 3,
+          "widgetType" : "bar",
+          "encodings" : {
+            "x" : {
+              "fieldName" : "Style",
+              "scale" : {
+                "type" : "categorical",
+                "sort" : {
+                  "by" : "y-reversed"
+                }
+              },
+              "displayName" : "Style"
+            },
+            "y" : {
+              "fieldName" : "measure(Sales by product styles)",
+              "scale" : {
+                "type" : "quantitative"
+              },
+              "displayName" : "Sales by product styles"
+            }
+          },
+          "frame" : {
+            "title" : "Sales by Product Styles",
+            "showTitle" : true
+          }
+        }
+      },
+      "position" : {
+        "x" : 1,
+        "y" : 1,
+        "width" : 3,
+        "height" : 6
+      }
+    } ],
+    "pageType" : "PAGE_TYPE_UNSPECIFIED"
+  }, {
     "name" : "3f7067f5",
     "displayName" : "AI Forecasting",
     "layout" : [ {
@@ -1337,22 +1444,6 @@
         "y" : 1,
         "width" : 6,
         "height" : 13
-      }
-    } ],
-    "pageType" : "PAGE_TYPE_UNSPECIFIED"
-  }, {
-    "name" : "ae33cf15",
-    "displayName" : "changes",
-    "layout" : [ {
-      "widget" : {
-        "name" : "d13caacf",
-        "textbox_spec" : "this is test"
-      },
-      "position" : {
-        "x" : 0,
-        "y" : 0,
-        "width" : 6,
-        "height" : 2
       }
     } ],
     "pageType" : "PAGE_TYPE_UNSPECIFIED"
