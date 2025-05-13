@@ -1,0 +1,1344 @@
+{
+  "datasets" : [ {
+    "name" : "a4e5bffa",
+    "displayName" : "Sales by Territory",
+    "query" : "SELECT dim_date.`Date`\n        , dim_territory.*\n        , dim_product.*\n        , fs.OrderAmount\n        , fs.OrderQuantity\n        , fs.CustomerKey\nFROM mp_data_platform.gold.fact_sales fs\n    JOIN mp_data_platform.gold.dim_date ON fs.OrderDate = dim_date.date_key\n    JOIN mp_data_platform.gold.dim_territory ON fs.TerritoryKey = dim_territory.SalesTerritoryKey\n    JOIN mp_data_platform.gold.dim_product ON fs.ProductKey = dim_product.ProductKey"
+  }, {
+    "name" : "e84b881b",
+    "displayName" : "Returns by Territory",
+    "query" : "SELECT dim_date.`Date`\n        , dim_territory.*\n        , dim_product.*        \n        , fs.ReturnAmount\n        , fs.ReturnQuantity\nFROM mp_data_platform.gold.fact_returns fs\n    JOIN mp_data_platform.gold.dim_date ON fs.ReturnDate = mp_data_platform.gold.dim_date.date_key\n    JOIN mp_data_platform.gold.dim_territory ON fs.TerritoryKey = dim_territory.SalesTerritoryKey\n    JOIN mp_data_platform.gold.dim_product ON fs.ProductKey = dim_product.ProductKey"
+  }, {
+    "name" : "910497cb",
+    "displayName" : "v_sales_by_productstyle_region",
+    "query" : "SELECT * FROM mp_data_platform.gold.v_sales_by_productstyle_region",
+    "columns" : [ {
+      "displayName" : "Style_Description",
+      "description" : "Style_Description",
+      "expression" : "  case\n          when ProductStyle = 'U' then 'Universal' \n          when ProductStyle = 'M' then 'Mens'\n          when ProductStyle = 'W' then 'Womens'\n          when ProductStyle = '0' then 'Unknown'\n      end"
+    }, {
+      "displayName" : "Sales_by_product_styles",
+      "description" : "",
+      "expression" : "SUM(OrderAmount)  / count(distinct productStyle)"
+    } ]
+  }, {
+    "name" : "8a4f5cd4",
+    "displayName" : "productstylekpi1",
+    "query" : "/* metric-view-reference */\nSELECT * FROM mp_data_platform.gold.productstylekpi1"
+  }, {
+    "name" : "133fa4c4",
+    "displayName" : "Sales by Territory (Forecasted)",
+    "query" : "WITH original_table AS (\n    SELECT \n  DATE_TRUNC(\"MONTH\", `Date`) AS Date,\n  SUM(`OrderQuantity`) AS OrderQuantity\nFROM (\n    SELECT dim_date.`Date`\n        , dim_territory.*\n        , dim_product.*\n        , fs.OrderAmount\n        , fs.OrderQuantity\n        , fs.CustomerKey\nFROM mp_data_platform.gold.fact_sales fs\n    JOIN mp_data_platform.gold.dim_date ON fs.OrderDate = dim_date.date_key\n    JOIN mp_data_platform.gold.dim_territory ON fs.TerritoryKey = dim_territory.SalesTerritoryKey\n    JOIN mp_data_platform.gold.dim_product ON fs.ProductKey = dim_product.ProductKey\n) GROUP BY 1\n  ),\n  dates AS (\n    SELECT \n      MAX(Date) AS max_date_column,\n      MIN(Date) AS min_date_column,\n      MAX_BY(OrderQuantity, Date) AS OrderQuantity\n    FROM original_table\n  ),\n  forecast_table AS (\n    SELECT \n      Date,\n      OrderQuantity_forecast,\n      OrderQuantity_upper,\n      OrderQuantity_lower,\n      NULL AS OrderQuantity\n    FROM AI_FORECAST(\n      TABLE(original_table),\n      horizon => (\n        SELECT\n          max_date_column + MAKE_DT_INTERVAL(CAST(FLOOR(DATEDIFF(max_date_column, min_date_column) * 0.5) AS INT), 0, 0, 0)\n        FROM dates\n      ),\n      time_col => 'Date',\n      value_col => 'OrderQuantity'\n    )\n  )\n\n  SELECT * FROM forecast_table\n  UNION ALL\n  SELECT\n    Date,\n    NULL AS OrderQuantity_forecast,\n    NULL AS OrderQuantity_upper,\n    NULL AS OrderQuantity_lower,\n    OrderQuantity\n  FROM original_table\n    WHERE Date < (SELECT max_date_column FROM dates)\n  UNION ALL\n  SELECT\n    max_date_column AS Date,\n    OrderQuantity AS OrderQuantity_forecast,\n    OrderQuantity AS OrderQuantity_upper,\n    OrderQuantity AS OrderQuantity_lower,\n    OrderQuantity\n  FROM\n    dates"
+  }, {
+    "name" : "f654cce3",
+    "displayName" : "Sales by Territory (Forecasted)",
+    "query" : "WITH original_table AS (\n    SELECT \n  DATE_TRUNC(\"MONTH\", `Date`) AS Date,\n  SUM(`OrderQuantity`) AS OrderQuantity\nFROM (\n    SELECT dim_date.`Date`\n        , dim_territory.*\n        , dim_product.*\n        , fs.OrderAmount\n        , fs.OrderQuantity\n        , fs.CustomerKey\nFROM mp_data_platform.gold.fact_sales fs\n    JOIN mp_data_platform.gold.dim_date ON fs.OrderDate = dim_date.date_key\n    JOIN mp_data_platform.gold.dim_territory ON fs.TerritoryKey = dim_territory.SalesTerritoryKey\n    JOIN mp_data_platform.gold.dim_product ON fs.ProductKey = dim_product.ProductKey\n) GROUP BY 1\n  ),\n  dates AS (\n    SELECT \n      MAX(Date) AS max_date_column,\n      MIN(Date) AS min_date_column,\n      MAX_BY(OrderQuantity, Date) AS OrderQuantity\n    FROM original_table\n  ),\n  forecast_table AS (\n    SELECT \n      Date,\n      OrderQuantity_forecast,\n      OrderQuantity_upper,\n      OrderQuantity_lower,\n      NULL AS OrderQuantity\n    FROM AI_FORECAST(\n      TABLE(original_table),\n      horizon => (\n        SELECT\n          max_date_column + MAKE_DT_INTERVAL(CAST(FLOOR(DATEDIFF(max_date_column, min_date_column) * 0.5) AS INT), 0, 0, 0)\n        FROM dates\n      ),\n      time_col => 'Date',\n      value_col => 'OrderQuantity'\n    )\n  )\n\n  SELECT * FROM forecast_table\n  UNION ALL\n  SELECT\n    Date,\n    NULL AS OrderQuantity_forecast,\n    NULL AS OrderQuantity_upper,\n    NULL AS OrderQuantity_lower,\n    OrderQuantity\n  FROM original_table\n    WHERE Date < (SELECT max_date_column FROM dates)\n  UNION ALL\n  SELECT\n    max_date_column AS Date,\n    OrderQuantity AS OrderQuantity_forecast,\n    OrderQuantity AS OrderQuantity_upper,\n    OrderQuantity AS OrderQuantity_lower,\n    OrderQuantity\n  FROM\n    dates"
+  }, {
+    "name" : "bfdb5bcd",
+    "displayName" : "Customers detail",
+    "query" : "SELECT  dc.CustomerKey\n        , dc.age\n        , dc.Occupation\n        , dc.HomeOwner\n        , dc.EmailAddress\n        , fs.OrderAmount\n        , fs.OrderQuantity\nFROM mp_data_platform.gold.fact_sales fs\nJOIN mp_data_platform.gold.dim_customer dc\n        ON fs.CustomerKey = dc.CustomerKey"
+  } ],
+  "pages" : [ {
+    "name" : "temp_page_name",
+    "displayName" : "Sales Overview",
+    "layout" : [ {
+      "widget" : {
+        "name" : "952d5418",
+        "queries" : [ {
+          "name" : "main_query",
+          "query" : {
+            "datasetName" : "a4e5bffa",
+            "fields" : [ {
+              "name" : "Country",
+              "expression" : "`Country`"
+            }, {
+              "name" : "monthly(Date)",
+              "expression" : "DATE_TRUNC(\"MONTH\", `Date`)"
+            }, {
+              "name" : "sum(OrderAmount)",
+              "expression" : "SUM(`OrderAmount`)"
+            } ],
+            "disaggregated" : false
+          }
+        } ],
+        "spec" : {
+          "version" : 3,
+          "widgetType" : "area",
+          "encodings" : {
+            "x" : {
+              "fieldName" : "monthly(Date)",
+              "scale" : {
+                "type" : "temporal"
+              },
+              "displayName" : "Date"
+            },
+            "y" : {
+              "fieldName" : "sum(OrderAmount)",
+              "scale" : {
+                "type" : "quantitative"
+              },
+              "axis" : {
+                "title" : "Order Amount"
+              },
+              "displayName" : "Sales Amount"
+            },
+            "color" : {
+              "fieldName" : "Country",
+              "scale" : {
+                "type" : "categorical"
+              },
+              "displayName" : "Country"
+            },
+            "label" : {
+              "show" : false
+            }
+          },
+          "frame" : {
+            "showTitle" : true,
+            "title" : "Sales Trend"
+          }
+        }
+      },
+      "position" : {
+        "x" : 1,
+        "y" : 1,
+        "width" : 5,
+        "height" : 6
+      }
+    }, {
+      "widget" : {
+        "name" : "d97e9113",
+        "textbox_spec" : "### Adventure Works Sales Analysis"
+      },
+      "position" : {
+        "x" : 0,
+        "y" : 0,
+        "width" : 2,
+        "height" : 1
+      }
+    }, {
+      "widget" : {
+        "name" : "0527c1a1",
+        "queries" : [ {
+          "name" : "dashboards/01f02dd98833133ba85f7f9c6e2be5d5/datasets/01f02dd9d3a3187c97730a1de1c58042_Date",
+          "query" : {
+            "datasetName" : "a4e5bffa",
+            "fields" : [ {
+              "name" : "Date",
+              "expression" : "`Date`"
+            }, {
+              "name" : "Date_associativity",
+              "expression" : "COUNT_IF(`associative_filter_predicate_group`)"
+            } ],
+            "disaggregated" : false
+          }
+        }, {
+          "name" : "dashboards/01f02dd98833133ba85f7f9c6e2be5d5/datasets/01f02de2cfb61844b36b8f7a956632c7_Date",
+          "query" : {
+            "datasetName" : "e84b881b",
+            "fields" : [ {
+              "name" : "Date",
+              "expression" : "`Date`"
+            }, {
+              "name" : "Date_associativity",
+              "expression" : "COUNT_IF(`associative_filter_predicate_group`)"
+            } ],
+            "disaggregated" : false
+          }
+        } ],
+        "spec" : {
+          "version" : 2,
+          "widgetType" : "filter-date-range-picker",
+          "encodings" : {
+            "fields" : [ {
+              "fieldName" : "Date",
+              "displayName" : "Date",
+              "queryName" : "dashboards/01f02dd98833133ba85f7f9c6e2be5d5/datasets/01f02dd9d3a3187c97730a1de1c58042_Date"
+            }, {
+              "fieldName" : "Date",
+              "displayName" : "Date",
+              "queryName" : "dashboards/01f02dd98833133ba85f7f9c6e2be5d5/datasets/01f02de2cfb61844b36b8f7a956632c7_Date"
+            } ]
+          },
+          "frame" : {
+            "showTitle" : true,
+            "title" : ""
+          }
+        }
+      },
+      "position" : {
+        "x" : 2,
+        "y" : 0,
+        "width" : 2,
+        "height" : 1
+      }
+    }, {
+      "widget" : {
+        "name" : "3e5c1b18",
+        "queries" : [ {
+          "name" : "dashboards/01f02dd98833133ba85f7f9c6e2be5d5/datasets/01f02dd9d3a3187c97730a1de1c58042_Continent",
+          "query" : {
+            "datasetName" : "a4e5bffa",
+            "fields" : [ {
+              "name" : "Continent",
+              "expression" : "`Continent`"
+            }, {
+              "name" : "Continent_associativity",
+              "expression" : "COUNT_IF(`associative_filter_predicate_group`)"
+            } ],
+            "disaggregated" : false
+          }
+        }, {
+          "name" : "dashboards/01f02dd98833133ba85f7f9c6e2be5d5/datasets/01f02de2cfb61844b36b8f7a956632c7_Continent",
+          "query" : {
+            "datasetName" : "e84b881b",
+            "fields" : [ {
+              "name" : "Continent",
+              "expression" : "`Continent`"
+            }, {
+              "name" : "Continent_associativity",
+              "expression" : "COUNT_IF(`associative_filter_predicate_group`)"
+            } ],
+            "disaggregated" : false
+          }
+        } ],
+        "spec" : {
+          "version" : 2,
+          "widgetType" : "filter-single-select",
+          "encodings" : {
+            "fields" : [ {
+              "fieldName" : "Continent",
+              "displayName" : "Continent",
+              "queryName" : "dashboards/01f02dd98833133ba85f7f9c6e2be5d5/datasets/01f02dd9d3a3187c97730a1de1c58042_Continent"
+            }, {
+              "fieldName" : "Continent",
+              "displayName" : "Continent",
+              "queryName" : "dashboards/01f02dd98833133ba85f7f9c6e2be5d5/datasets/01f02de2cfb61844b36b8f7a956632c7_Continent"
+            } ]
+          },
+          "frame" : {
+            "showTitle" : true,
+            "title" : "",
+            "headerAlignment" : "left"
+          }
+        }
+      },
+      "position" : {
+        "x" : 4,
+        "y" : 0,
+        "width" : 2,
+        "height" : 1
+      }
+    }, {
+      "widget" : {
+        "name" : "405575ea",
+        "queries" : [ {
+          "name" : "main_query",
+          "query" : {
+            "datasetName" : "a4e5bffa",
+            "fields" : [ {
+              "name" : "countdistinct(CustomerKey)",
+              "expression" : "COUNT(DISTINCT `CustomerKey`)"
+            } ],
+            "disaggregated" : false
+          }
+        } ],
+        "spec" : {
+          "version" : 2,
+          "widgetType" : "counter",
+          "encodings" : {
+            "value" : {
+              "fieldName" : "countdistinct(CustomerKey)",
+              "format" : {
+                "type" : "number-plain",
+                "abbreviation" : "compact",
+                "decimalPlaces" : {
+                  "type" : "max",
+                  "places" : 2
+                },
+                "hideGroupSeparator" : false
+              },
+              "style" : {
+                "rules" : [ {
+                  "condition" : {
+                    "operator" : ">="
+                  },
+                  "color" : "#00A972"
+                } ]
+              },
+              "displayName" : "Count of Unique CustomerKey"
+            }
+          },
+          "frame" : {
+            "contentAlignment" : "left",
+            "showTitle" : true,
+            "title" : "Customers"
+          }
+        }
+      },
+      "position" : {
+        "x" : 0,
+        "y" : 1,
+        "width" : 1,
+        "height" : 2
+      }
+    }, {
+      "widget" : {
+        "name" : "ccb9fc43",
+        "queries" : [ {
+          "name" : "main_query",
+          "query" : {
+            "datasetName" : "a4e5bffa",
+            "fields" : [ {
+              "name" : "sum(OrderQuantity)",
+              "expression" : "SUM(`OrderQuantity`)"
+            } ],
+            "disaggregated" : false
+          }
+        } ],
+        "spec" : {
+          "version" : 2,
+          "widgetType" : "counter",
+          "encodings" : {
+            "value" : {
+              "fieldName" : "sum(OrderQuantity)",
+              "format" : {
+                "type" : "number-plain",
+                "abbreviation" : "compact",
+                "decimalPlaces" : {
+                  "type" : "max",
+                  "places" : 2
+                },
+                "hideGroupSeparator" : false
+              },
+              "style" : {
+                "color" : "#FF3621",
+                "rules" : [ {
+                  "condition" : {
+                    "operator" : ">="
+                  },
+                  "color" : "#00A972"
+                } ]
+              },
+              "displayName" : "Sum of OrderQuantity"
+            }
+          },
+          "frame" : {
+            "contentAlignment" : "left",
+            "showTitle" : true,
+            "title" : "Total Orders"
+          }
+        }
+      },
+      "position" : {
+        "x" : 0,
+        "y" : 3,
+        "width" : 1,
+        "height" : 2
+      }
+    }, {
+      "widget" : {
+        "name" : "6a23a2ba",
+        "queries" : [ {
+          "name" : "main_query",
+          "query" : {
+            "datasetName" : "e84b881b",
+            "fields" : [ {
+              "name" : "sum(ReturnQuantity)",
+              "expression" : "SUM(`ReturnQuantity`)"
+            } ],
+            "disaggregated" : false
+          }
+        } ],
+        "spec" : {
+          "version" : 2,
+          "widgetType" : "counter",
+          "encodings" : {
+            "value" : {
+              "fieldName" : "sum(ReturnQuantity)",
+              "format" : {
+                "type" : "number-plain",
+                "abbreviation" : "compact",
+                "decimalPlaces" : {
+                  "type" : "max",
+                  "places" : 2
+                },
+                "hideGroupSeparator" : false
+              },
+              "style" : {
+                "color" : "#00A972",
+                "rules" : [ {
+                  "condition" : {
+                    "operator" : ">="
+                  },
+                  "color" : "#00A972"
+                } ]
+              },
+              "displayName" : "Sum of ReturnQuantity"
+            }
+          },
+          "frame" : {
+            "contentAlignment" : "left",
+            "showTitle" : true,
+            "title" : "Total Returns"
+          }
+        }
+      },
+      "position" : {
+        "x" : 0,
+        "y" : 5,
+        "width" : 1,
+        "height" : 2
+      }
+    }, {
+      "widget" : {
+        "name" : "257571b5",
+        "queries" : [ {
+          "name" : "main_query",
+          "query" : {
+            "datasetName" : "a4e5bffa",
+            "fields" : [ {
+              "name" : "sum(OrderQuantity)",
+              "expression" : "SUM(`OrderQuantity`)"
+            }, {
+              "name" : "Country",
+              "expression" : "`Country`"
+            }, {
+              "name" : "SubcategoryName",
+              "expression" : "`SubcategoryName`"
+            } ],
+            "disaggregated" : false
+          }
+        } ],
+        "spec" : {
+          "version" : 3,
+          "widgetType" : "heatmap",
+          "encodings" : {
+            "x" : {
+              "fieldName" : "Country",
+              "scale" : {
+                "type" : "categorical"
+              },
+              "axis" : {
+                "hideTitle" : true,
+                "labelAngle" : 90
+              },
+              "displayName" : "Country"
+            },
+            "y" : {
+              "fieldName" : "SubcategoryName",
+              "scale" : {
+                "type" : "categorical"
+              },
+              "axis" : {
+                "hideTitle" : true
+              },
+              "displayName" : "SubcategoryName"
+            },
+            "color" : {
+              "fieldName" : "sum(OrderQuantity)",
+              "scale" : {
+                "type" : "quantitative"
+              },
+              "legend" : {
+                "hide" : false,
+                "hideTitle" : true
+              },
+              "displayName" : "Sum of OrderQuantity"
+            },
+            "label" : {
+              "show" : false
+            }
+          },
+          "frame" : {
+            "showTitle" : true,
+            "title" : "Units Sold by Country"
+          }
+        }
+      },
+      "position" : {
+        "x" : 2,
+        "y" : 7,
+        "width" : 4,
+        "height" : 8
+      }
+    }, {
+      "widget" : {
+        "name" : "e3776480",
+        "queries" : [ {
+          "name" : "main_query",
+          "query" : {
+            "datasetName" : "a4e5bffa",
+            "fields" : [ {
+              "name" : "CategoryName",
+              "expression" : "`CategoryName`"
+            }, {
+              "name" : "sum(OrderQuantity)",
+              "expression" : "SUM(`OrderQuantity`)"
+            } ],
+            "disaggregated" : false
+          }
+        } ],
+        "spec" : {
+          "version" : 3,
+          "widgetType" : "bar",
+          "encodings" : {
+            "x" : {
+              "fieldName" : "CategoryName",
+              "scale" : {
+                "type" : "categorical"
+              },
+              "displayName" : "CategoryName"
+            },
+            "y" : {
+              "fieldName" : "sum(OrderQuantity)",
+              "scale" : {
+                "type" : "quantitative"
+              },
+              "displayName" : "Sum of OrderQuantity"
+            },
+            "label" : {
+              "show" : true
+            }
+          },
+          "frame" : {
+            "showTitle" : true,
+            "title" : "Categories Sold"
+          }
+        }
+      },
+      "position" : {
+        "x" : 0,
+        "y" : 7,
+        "width" : 2,
+        "height" : 8
+      }
+    } ],
+    "pageType" : "PAGE_TYPE_UNSPECIFIED"
+  }, {
+    "name" : "fa0d595b",
+    "displayName" : "Returns Overview",
+    "layout" : [ {
+      "widget" : {
+        "name" : "b2b078c2",
+        "textbox_spec" : "### Adventure Works Sales Analysis"
+      },
+      "position" : {
+        "x" : 0,
+        "y" : 0,
+        "width" : 2,
+        "height" : 1
+      }
+    }, {
+      "widget" : {
+        "name" : "ddd2bb28",
+        "queries" : [ {
+          "name" : "dashboards/01f02dd98833133ba85f7f9c6e2be5d5/datasets/01f02dd9d3a3187c97730a1de1c58042_Date",
+          "query" : {
+            "datasetName" : "a4e5bffa",
+            "fields" : [ {
+              "name" : "Date",
+              "expression" : "`Date`"
+            }, {
+              "name" : "Date_associativity",
+              "expression" : "COUNT_IF(`associative_filter_predicate_group`)"
+            } ],
+            "disaggregated" : false
+          }
+        }, {
+          "name" : "dashboards/01f02dd98833133ba85f7f9c6e2be5d5/datasets/01f02de2cfb61844b36b8f7a956632c7_Date",
+          "query" : {
+            "datasetName" : "e84b881b",
+            "fields" : [ {
+              "name" : "Date",
+              "expression" : "`Date`"
+            }, {
+              "name" : "Date_associativity",
+              "expression" : "COUNT_IF(`associative_filter_predicate_group`)"
+            } ],
+            "disaggregated" : false
+          }
+        } ],
+        "spec" : {
+          "version" : 2,
+          "widgetType" : "filter-date-range-picker",
+          "encodings" : {
+            "fields" : [ {
+              "fieldName" : "Date",
+              "displayName" : "Date",
+              "queryName" : "dashboards/01f02dd98833133ba85f7f9c6e2be5d5/datasets/01f02dd9d3a3187c97730a1de1c58042_Date"
+            }, {
+              "fieldName" : "Date",
+              "displayName" : "Date",
+              "queryName" : "dashboards/01f02dd98833133ba85f7f9c6e2be5d5/datasets/01f02de2cfb61844b36b8f7a956632c7_Date"
+            } ]
+          },
+          "frame" : {
+            "showTitle" : true,
+            "title" : ""
+          }
+        }
+      },
+      "position" : {
+        "x" : 2,
+        "y" : 0,
+        "width" : 2,
+        "height" : 1
+      }
+    }, {
+      "widget" : {
+        "name" : "67070545",
+        "queries" : [ {
+          "name" : "dashboards/01f02dd98833133ba85f7f9c6e2be5d5/datasets/01f02dd9d3a3187c97730a1de1c58042_Continent",
+          "query" : {
+            "datasetName" : "a4e5bffa",
+            "fields" : [ {
+              "name" : "Continent",
+              "expression" : "`Continent`"
+            }, {
+              "name" : "Continent_associativity",
+              "expression" : "COUNT_IF(`associative_filter_predicate_group`)"
+            } ],
+            "disaggregated" : false
+          }
+        }, {
+          "name" : "dashboards/01f02dd98833133ba85f7f9c6e2be5d5/datasets/01f02de2cfb61844b36b8f7a956632c7_Continent",
+          "query" : {
+            "datasetName" : "e84b881b",
+            "fields" : [ {
+              "name" : "Continent",
+              "expression" : "`Continent`"
+            }, {
+              "name" : "Continent_associativity",
+              "expression" : "COUNT_IF(`associative_filter_predicate_group`)"
+            } ],
+            "disaggregated" : false
+          }
+        } ],
+        "spec" : {
+          "version" : 2,
+          "widgetType" : "filter-single-select",
+          "encodings" : {
+            "fields" : [ {
+              "fieldName" : "Continent",
+              "displayName" : "Continent",
+              "queryName" : "dashboards/01f02dd98833133ba85f7f9c6e2be5d5/datasets/01f02dd9d3a3187c97730a1de1c58042_Continent"
+            }, {
+              "fieldName" : "Continent",
+              "displayName" : "Continent",
+              "queryName" : "dashboards/01f02dd98833133ba85f7f9c6e2be5d5/datasets/01f02de2cfb61844b36b8f7a956632c7_Continent"
+            } ]
+          },
+          "frame" : {
+            "showTitle" : true,
+            "title" : ""
+          }
+        }
+      },
+      "position" : {
+        "x" : 4,
+        "y" : 0,
+        "width" : 2,
+        "height" : 1
+      }
+    }, {
+      "widget" : {
+        "name" : "1640612e",
+        "queries" : [ {
+          "name" : "main_query",
+          "query" : {
+            "datasetName" : "e84b881b",
+            "fields" : [ {
+              "name" : "countdistinct(ProductKey)",
+              "expression" : "COUNT(DISTINCT `ProductKey`)"
+            } ],
+            "disaggregated" : false
+          }
+        } ],
+        "spec" : {
+          "version" : 2,
+          "widgetType" : "counter",
+          "encodings" : {
+            "value" : {
+              "fieldName" : "countdistinct(ProductKey)",
+              "format" : {
+                "type" : "number-plain",
+                "abbreviation" : "compact",
+                "decimalPlaces" : {
+                  "type" : "max",
+                  "places" : 2
+                },
+                "hideGroupSeparator" : false
+              },
+              "style" : {
+                "rules" : [ {
+                  "condition" : {
+                    "operator" : ">="
+                  },
+                  "color" : "#00A972"
+                } ]
+              },
+              "displayName" : "Count of Unique ProductKey"
+            }
+          },
+          "frame" : {
+            "contentAlignment" : "left",
+            "showTitle" : true,
+            "title" : "Products Returned"
+          }
+        }
+      },
+      "position" : {
+        "x" : 0,
+        "y" : 1,
+        "width" : 1,
+        "height" : 2
+      }
+    }, {
+      "widget" : {
+        "name" : "93a01fb4",
+        "queries" : [ {
+          "name" : "main_query",
+          "query" : {
+            "datasetName" : "e84b881b",
+            "fields" : [ {
+              "name" : "sum(ReturnAmount)",
+              "expression" : "SUM(`ReturnAmount`)"
+            } ],
+            "disaggregated" : false
+          }
+        } ],
+        "spec" : {
+          "version" : 2,
+          "widgetType" : "counter",
+          "encodings" : {
+            "value" : {
+              "fieldName" : "sum(ReturnAmount)",
+              "format" : {
+                "type" : "number-plain",
+                "abbreviation" : "compact",
+                "decimalPlaces" : {
+                  "type" : "max",
+                  "places" : 2
+                },
+                "hideGroupSeparator" : false
+              },
+              "style" : {
+                "color" : "#FF3621",
+                "rules" : [ {
+                  "condition" : {
+                    "operator" : ">="
+                  },
+                  "color" : "#00A972"
+                } ]
+              },
+              "displayName" : "Sum of ReturnAmount"
+            }
+          },
+          "frame" : {
+            "contentAlignment" : "left",
+            "showTitle" : true,
+            "title" : "Returns Value"
+          }
+        }
+      },
+      "position" : {
+        "x" : 0,
+        "y" : 3,
+        "width" : 1,
+        "height" : 2
+      }
+    }, {
+      "widget" : {
+        "name" : "2cea00da",
+        "queries" : [ {
+          "name" : "main_query",
+          "query" : {
+            "datasetName" : "e84b881b",
+            "fields" : [ {
+              "name" : "sum(ReturnQuantity)",
+              "expression" : "SUM(`ReturnQuantity`)"
+            } ],
+            "disaggregated" : false
+          }
+        } ],
+        "spec" : {
+          "version" : 2,
+          "widgetType" : "counter",
+          "encodings" : {
+            "value" : {
+              "fieldName" : "sum(ReturnQuantity)",
+              "format" : {
+                "type" : "number-plain",
+                "abbreviation" : "compact",
+                "decimalPlaces" : {
+                  "type" : "max",
+                  "places" : 2
+                },
+                "hideGroupSeparator" : false
+              },
+              "style" : {
+                "color" : "#00A972",
+                "rules" : [ {
+                  "condition" : {
+                    "operator" : ">="
+                  },
+                  "color" : "#00A972"
+                } ]
+              },
+              "displayName" : "Sum of ReturnQuantity"
+            }
+          },
+          "frame" : {
+            "contentAlignment" : "left",
+            "showTitle" : true,
+            "title" : "Total Returns"
+          }
+        }
+      },
+      "position" : {
+        "x" : 0,
+        "y" : 5,
+        "width" : 1,
+        "height" : 2
+      }
+    }, {
+      "widget" : {
+        "name" : "3bc55e19",
+        "queries" : [ {
+          "name" : "main_query",
+          "query" : {
+            "datasetName" : "e84b881b",
+            "fields" : [ {
+              "name" : "CategoryName",
+              "expression" : "`CategoryName`"
+            }, {
+              "name" : "monthly(Date)",
+              "expression" : "DATE_TRUNC(\"MONTH\", `Date`)"
+            }, {
+              "name" : "sum(ReturnQuantity)",
+              "expression" : "SUM(`ReturnQuantity`)"
+            } ],
+            "disaggregated" : false
+          }
+        } ],
+        "spec" : {
+          "version" : 3,
+          "widgetType" : "bar",
+          "encodings" : {
+            "x" : {
+              "fieldName" : "monthly(Date)",
+              "scale" : {
+                "type" : "categorical"
+              },
+              "displayName" : "Date"
+            },
+            "y" : {
+              "fieldName" : "sum(ReturnQuantity)",
+              "scale" : {
+                "type" : "quantitative"
+              },
+              "axis" : {
+                "hideTitle" : true
+              },
+              "displayName" : "Sum of ReturnQuantity"
+            },
+            "color" : {
+              "fieldName" : "CategoryName",
+              "scale" : {
+                "type" : "categorical"
+              },
+              "legend" : {
+                "hideTitle" : true,
+                "position" : "right"
+              },
+              "displayName" : "CategoryName"
+            }
+          },
+          "frame" : {
+            "showTitle" : true,
+            "title" : "Returns Trend by Category"
+          }
+        }
+      },
+      "position" : {
+        "x" : 1,
+        "y" : 1,
+        "width" : 5,
+        "height" : 6
+      }
+    } ],
+    "pageType" : "PAGE_TYPE_UNSPECIFIED"
+  }, {
+    "name" : "328ce3c7",
+    "displayName" : "Sales by product style",
+    "layout" : [ {
+      "widget" : {
+        "name" : "524f1379",
+        "queries" : [ {
+          "name" : "main_query",
+          "query" : {
+            "datasetName" : "910497cb",
+            "fields" : [ {
+              "name" : "sum(sum(OrderQuantity))",
+              "expression" : "SUM(`sum(OrderQuantity)`)"
+            }, {
+              "name" : "Style_Description",
+              "expression" : "`Style_Description`"
+            } ],
+            "disaggregated" : false
+          }
+        } ],
+        "spec" : {
+          "version" : 3,
+          "widgetType" : "pie",
+          "encodings" : {
+            "angle" : {
+              "fieldName" : "sum(sum(OrderQuantity))",
+              "scale" : {
+                "type" : "quantitative"
+              },
+              "displayName" : "Sum of sum(OrderQuantity)"
+            },
+            "color" : {
+              "fieldName" : "Style_Description",
+              "scale" : {
+                "type" : "categorical"
+              },
+              "displayName" : "Style_Description"
+            },
+            "label" : {
+              "show" : true
+            }
+          },
+          "frame" : {
+            "title" : "Total Orders by Style Description",
+            "showTitle" : true
+          }
+        }
+      },
+      "position" : {
+        "x" : 0,
+        "y" : 0,
+        "width" : 3,
+        "height" : 6
+      }
+    }, {
+      "widget" : {
+        "name" : "8476fbfb",
+        "queries" : [ {
+          "name" : "main_query",
+          "query" : {
+            "datasetName" : "910497cb",
+            "fields" : [ {
+              "name" : "ProductStyle",
+              "expression" : "`ProductStyle`"
+            }, {
+              "name" : "measure(Sales_by_product_styles)",
+              "expression" : "MEASURE(`Sales_by_product_styles`)"
+            } ],
+            "disaggregated" : false
+          }
+        } ],
+        "spec" : {
+          "version" : 3,
+          "widgetType" : "bar",
+          "encodings" : {
+            "x" : {
+              "fieldName" : "ProductStyle",
+              "scale" : {
+                "type" : "categorical",
+                "sort" : {
+                  "by" : "y-reversed"
+                }
+              },
+              "displayName" : "ProductStyle"
+            },
+            "y" : {
+              "fieldName" : "measure(Sales_by_product_styles)",
+              "scale" : {
+                "type" : "quantitative"
+              },
+              "displayName" : "Sales_by_product_styles"
+            }
+          },
+          "frame" : {
+            "title" : "Sales by Product Styles",
+            "showTitle" : true
+          }
+        }
+      },
+      "position" : {
+        "x" : 3,
+        "y" : 0,
+        "width" : 3,
+        "height" : 6
+      }
+    }, {
+      "widget" : {
+        "name" : "8376bf54",
+        "queries" : [ {
+          "name" : "main_query",
+          "query" : {
+            "datasetName" : "910497cb",
+            "fields" : [ {
+              "name" : "Style_Description",
+              "expression" : "`Style_Description`"
+            }, {
+              "name" : "region",
+              "expression" : "`region`"
+            }, {
+              "name" : "sum(OrderAmount)",
+              "expression" : "SUM(`OrderAmount`)"
+            } ],
+            "disaggregated" : false
+          }
+        } ],
+        "spec" : {
+          "version" : 3,
+          "widgetType" : "bar",
+          "encodings" : {
+            "x" : {
+              "fieldName" : "region",
+              "scale" : {
+                "type" : "categorical",
+                "sort" : {
+                  "by" : "y-reversed"
+                }
+              },
+              "displayName" : "region"
+            },
+            "y" : {
+              "fieldName" : "sum(OrderAmount)",
+              "scale" : {
+                "type" : "quantitative"
+              },
+              "displayName" : "Sum of OrderAmount"
+            },
+            "color" : {
+              "fieldName" : "Style_Description",
+              "scale" : {
+                "type" : "categorical"
+              },
+              "displayName" : "Style_Description"
+            }
+          },
+          "frame" : {
+            "title" : "Sales by Region grouped by Style Description",
+            "showTitle" : true
+          }
+        }
+      },
+      "position" : {
+        "x" : 3,
+        "y" : 6,
+        "width" : 3,
+        "height" : 6
+      }
+    } ],
+    "pageType" : "PAGE_TYPE_UNSPECIFIED"
+  }, {
+    "name" : "3f7067f5",
+    "displayName" : "AI Forecasting",
+    "layout" : [ {
+      "widget" : {
+        "name" : "0d0cb8dc",
+        "queries" : [ {
+          "name" : "main_query",
+          "query" : {
+            "datasetName" : "f654cce3",
+            "fields" : [ {
+              "name" : "Date",
+              "expression" : "`Date`"
+            }, {
+              "name" : "OrderQuantity",
+              "expression" : "`OrderQuantity`"
+            }, {
+              "name" : "OrderQuantity_forecast",
+              "expression" : "`OrderQuantity_forecast`"
+            }, {
+              "name" : "OrderQuantity_upper",
+              "expression" : "`OrderQuantity_upper`"
+            }, {
+              "name" : "OrderQuantity_lower",
+              "expression" : "`OrderQuantity_lower`"
+            } ],
+            "disaggregated" : true
+          }
+        } ],
+        "spec" : {
+          "version" : 1,
+          "widgetType" : "forecast-line",
+          "encodings" : {
+            "x" : {
+              "fieldName" : "Date",
+              "displayName" : "Date",
+              "scale" : {
+                "type" : "temporal"
+              }
+            },
+            "y" : {
+              "scale" : {
+                "type" : "quantitative"
+              },
+              "original" : {
+                "fieldName" : "OrderQuantity",
+                "displayName" : "Sum of OrderQuantity"
+              },
+              "prediction" : {
+                "fieldName" : "OrderQuantity_forecast",
+                "displayName" : "Sum of OrderQuantity_forecast"
+              },
+              "predictionUpper" : {
+                "fieldName" : "OrderQuantity_upper",
+                "displayName" : "Sum of OrderQuantity_upper"
+              },
+              "predictionLower" : {
+                "fieldName" : "OrderQuantity_lower",
+                "displayName" : "Sum of OrderQuantity_lower"
+              }
+            }
+          }
+        }
+      },
+      "position" : {
+        "x" : 1,
+        "y" : 7,
+        "width" : 3,
+        "height" : 6
+      }
+    } ],
+    "pageType" : "PAGE_TYPE_UNSPECIFIED"
+  }, {
+    "name" : "114e56ea",
+    "displayName" : "Detailed Customer View",
+    "layout" : [ {
+      "widget" : {
+        "name" : "a445add8",
+        "textbox_spec" : "### Adventure Works - Detailed Customer Analysis"
+      },
+      "position" : {
+        "x" : 0,
+        "y" : 0,
+        "width" : 6,
+        "height" : 1
+      }
+    }, {
+      "widget" : {
+        "name" : "253fb975",
+        "queries" : [ {
+          "name" : "main_query",
+          "query" : {
+            "datasetName" : "bfdb5bcd",
+            "fields" : [ {
+              "name" : "CustomerKey",
+              "expression" : "`CustomerKey`"
+            }, {
+              "name" : "EmailAddress",
+              "expression" : "`EmailAddress`"
+            }, {
+              "name" : "age",
+              "expression" : "`age`"
+            }, {
+              "name" : "Occupation",
+              "expression" : "`Occupation`"
+            }, {
+              "name" : "HomeOwner",
+              "expression" : "`HomeOwner`"
+            }, {
+              "name" : "OrderAmount",
+              "expression" : "`OrderAmount`"
+            }, {
+              "name" : "OrderQuantity",
+              "expression" : "`OrderQuantity`"
+            } ],
+            "disaggregated" : true
+          }
+        } ],
+        "spec" : {
+          "version" : 1,
+          "widgetType" : "table",
+          "encodings" : {
+            "columns" : [ {
+              "fieldName" : "CustomerKey",
+              "booleanValues" : [ "false", "true" ],
+              "imageUrlTemplate" : "{{ @ }}",
+              "imageTitleTemplate" : "{{ @ }}",
+              "imageWidth" : "",
+              "imageHeight" : "",
+              "linkUrlTemplate" : "{{ @ }}",
+              "linkTextTemplate" : "{{ @ }}",
+              "linkTitleTemplate" : "{{ @ }}",
+              "linkOpenInNewTab" : true,
+              "type" : "string",
+              "displayAs" : "string",
+              "visible" : true,
+              "order" : 0,
+              "title" : "Customer Key",
+              "allowSearch" : false,
+              "alignContent" : "left",
+              "allowHTML" : false,
+              "highlightLinks" : false,
+              "useMonospaceFont" : false,
+              "preserveWhitespace" : false,
+              "displayName" : "CustomerKey"
+            }, {
+              "fieldName" : "EmailAddress",
+              "booleanValues" : [ "false", "true" ],
+              "imageUrlTemplate" : "{{ @ }}",
+              "imageTitleTemplate" : "{{ @ }}",
+              "imageWidth" : "",
+              "imageHeight" : "",
+              "linkUrlTemplate" : "{{ @ }}",
+              "linkTextTemplate" : "{{ @ }}",
+              "linkTitleTemplate" : "{{ @ }}",
+              "linkOpenInNewTab" : true,
+              "type" : "string",
+              "displayAs" : "string",
+              "visible" : true,
+              "order" : 1,
+              "title" : "Email",
+              "allowSearch" : true,
+              "alignContent" : "left",
+              "allowHTML" : false,
+              "highlightLinks" : false,
+              "useMonospaceFont" : false,
+              "preserveWhitespace" : false,
+              "displayName" : "EmailAddress"
+            }, {
+              "fieldName" : "age",
+              "numberFormat" : "0",
+              "booleanValues" : [ "false", "true" ],
+              "imageUrlTemplate" : "{{ @ }}",
+              "imageTitleTemplate" : "{{ @ }}",
+              "imageWidth" : "",
+              "imageHeight" : "",
+              "linkUrlTemplate" : "{{ @ }}",
+              "linkTextTemplate" : "{{ @ }}",
+              "linkTitleTemplate" : "{{ @ }}",
+              "linkOpenInNewTab" : true,
+              "type" : "integer",
+              "displayAs" : "number",
+              "visible" : true,
+              "order" : 2,
+              "title" : "age",
+              "allowSearch" : false,
+              "alignContent" : "right",
+              "allowHTML" : false,
+              "highlightLinks" : false,
+              "useMonospaceFont" : false,
+              "preserveWhitespace" : false,
+              "displayName" : "age"
+            }, {
+              "fieldName" : "Occupation",
+              "booleanValues" : [ "false", "true" ],
+              "imageUrlTemplate" : "{{ @ }}",
+              "imageTitleTemplate" : "{{ @ }}",
+              "imageWidth" : "",
+              "imageHeight" : "",
+              "linkUrlTemplate" : "{{ @ }}",
+              "linkTextTemplate" : "{{ @ }}",
+              "linkTitleTemplate" : "{{ @ }}",
+              "linkOpenInNewTab" : true,
+              "type" : "string",
+              "displayAs" : "string",
+              "visible" : true,
+              "order" : 3,
+              "title" : "Occupation",
+              "allowSearch" : true,
+              "alignContent" : "left",
+              "allowHTML" : false,
+              "highlightLinks" : false,
+              "useMonospaceFont" : false,
+              "preserveWhitespace" : false,
+              "displayName" : "Occupation"
+            }, {
+              "fieldName" : "HomeOwner",
+              "booleanValues" : [ "false", "true" ],
+              "imageUrlTemplate" : "{{ @ }}",
+              "imageTitleTemplate" : "{{ @ }}",
+              "imageWidth" : "",
+              "imageHeight" : "",
+              "linkUrlTemplate" : "{{ @ }}",
+              "linkTextTemplate" : "{{ @ }}",
+              "linkTitleTemplate" : "{{ @ }}",
+              "linkOpenInNewTab" : true,
+              "type" : "string",
+              "displayAs" : "string",
+              "visible" : true,
+              "order" : 4,
+              "title" : "Home Owner",
+              "allowSearch" : false,
+              "alignContent" : "left",
+              "allowHTML" : false,
+              "highlightLinks" : false,
+              "useMonospaceFont" : false,
+              "preserveWhitespace" : false,
+              "displayName" : "HomeOwner"
+            }, {
+              "fieldName" : "OrderAmount",
+              "numberFormat" : "'$ 0,0[.]00'",
+              "booleanValues" : [ "false", "true" ],
+              "imageUrlTemplate" : "{{ @ }}",
+              "imageTitleTemplate" : "{{ @ }}",
+              "imageWidth" : "",
+              "imageHeight" : "",
+              "linkUrlTemplate" : "{{ @ }}",
+              "linkTextTemplate" : "{{ @ }}",
+              "linkTitleTemplate" : "{{ @ }}",
+              "linkOpenInNewTab" : true,
+              "type" : "integer",
+              "displayAs" : "number",
+              "visible" : true,
+              "order" : 5,
+              "title" : "Sales",
+              "allowSearch" : false,
+              "alignContent" : "right",
+              "allowHTML" : false,
+              "highlightLinks" : false,
+              "useMonospaceFont" : false,
+              "preserveWhitespace" : false,
+              "displayName" : "OrderAmount"
+            }, {
+              "fieldName" : "OrderQuantity",
+              "numberFormat" : "0",
+              "booleanValues" : [ "false", "true" ],
+              "imageUrlTemplate" : "{{ @ }}",
+              "imageTitleTemplate" : "{{ @ }}",
+              "imageWidth" : "",
+              "imageHeight" : "",
+              "linkUrlTemplate" : "{{ @ }}",
+              "linkTextTemplate" : "{{ @ }}",
+              "linkTitleTemplate" : "{{ @ }}",
+              "linkOpenInNewTab" : true,
+              "type" : "integer",
+              "displayAs" : "number",
+              "visible" : true,
+              "order" : 6,
+              "title" : "Orders",
+              "allowSearch" : false,
+              "alignContent" : "right",
+              "allowHTML" : false,
+              "highlightLinks" : false,
+              "useMonospaceFont" : false,
+              "preserveWhitespace" : false,
+              "displayName" : "OrderQuantity"
+            } ]
+          },
+          "invisibleColumns" : [ ],
+          "allowHTMLByDefault" : false,
+          "itemsPerPage" : 25,
+          "paginationSize" : "default",
+          "condensed" : true,
+          "withRowNumber" : false
+        }
+      },
+      "position" : {
+        "x" : 0,
+        "y" : 1,
+        "width" : 6,
+        "height" : 13
+      }
+    } ],
+    "pageType" : "PAGE_TYPE_UNSPECIFIED"
+  } ]
+}
